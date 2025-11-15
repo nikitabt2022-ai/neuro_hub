@@ -1,5 +1,8 @@
 """Retrieval layer for Neuro Hub."""
 
-from retrieval.hybrid_search import HybridSearch
-
-__all__ = ["HybridSearch"]
+# Optional import for HybridSearch (requires rank-bm25)
+try:
+    from retrieval.hybrid_search import HybridSearch
+    __all__ = ["HybridSearch"]
+except ImportError:
+    __all__ = []

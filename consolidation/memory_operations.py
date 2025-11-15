@@ -94,7 +94,7 @@ class MemoryOperations:
         content1 = fact1.get("content", "").lower()
         content2 = fact2.get("content", "").lower()
 
-        negation_words = ["not", "no", "never", "don't", "doesn't", "didn't"]
+        negation_words = ["not", "no", "never", "don't", "doesn't", "didn't", "does not", "do not"]
 
         has_negation1 = any(word in content1 for word in negation_words)
         has_negation2 = any(word in content2 for word in negation_words)
@@ -102,8 +102,13 @@ class MemoryOperations:
         # If one has negation and other doesn't, might be contradictory
         if has_negation1 != has_negation2:
             # Check if they're about the same subject
-            words1 = set(content1.split())
-            words2 = set(content2.split())
+            # Remove negation words to find core content
+            words1 = set(w for w in content1.split() if w not in negation_words)
+            words2 = set(w for w in content2.split() if w not in negation_words)
+
+            if not words1 or not words2:
+                return False
+
             overlap = len(words1 & words2) / max(len(words1), len(words2))
 
             return overlap > 0.5
