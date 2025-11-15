@@ -1,6 +1,10 @@
 """Test hybrid search functionality."""
 
 import pytest
+
+# Skip entire module if rank_bm25 is not available
+pytest.importorskip("rank_bm25", reason="rank_bm25 not installed (optional dependency)")
+
 from retrieval.hybrid_search import HybridSearch
 
 
