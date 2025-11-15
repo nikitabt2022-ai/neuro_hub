@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # Milvus Vector Database
+  milvus:
+    image: milvusdb/milvus:latest
+    container_name: neuro_hub_milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    environment:
+      - ETCD_ENDPOINTS=etcd:2379
+      - MINIO_ADDRESS=minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
+    depends_on:
+      - etcd
+      - minio
+    networks:
+      - neuro_hub_network
+
+  # etcd for Milvus
+  etcd:
+    image: quay.io/coreos/etcd:latest
+    container_name: neuro_hub_etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    volumes:
+      - etcd_data:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    networks:
+      - neuro_hub_network
+
+  # MinIO for Milvus
+  minio:
+    image: minio/minio:latest
+    container_name: neuro_hub_minio
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    volumes:
+      - minio_data:/minio_data
+    command: minio server /minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - neuro_hub_network
+
+  # Neo4j Graph Database
+  neo4j:
+    image: neo4j:5-community
+    container_name: neuro_hub_neo4j
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - neuro_hub_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: neuro_hub_redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - neuro_hub_network
+
+  # PostgreSQL (optional, for relational data)
+  postgres:
+    image: postgres:15-alpine
+    container_name: neuro_hub_postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=neuro_hub
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=neuro_hub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - neuro_hub_network
+
+  # Prometheus (monitoring)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: neuro_hub_prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - neuro_hub_network
+
+  # Grafana (visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: neuro_hub_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - neuro_hub_network
+
+  # Jaeger (distributed tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: neuro_hub_jaeger
+    ports:
+      - "5775:5775/udp"
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "5778:5778"
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+    networks:
+      - neuro_hub_network
+
+networks:
+  neuro_hub_network:
+    driver: bridge
+
+volumes:
+  milvus_data:
+  etcd_data:
+  minio_data:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
