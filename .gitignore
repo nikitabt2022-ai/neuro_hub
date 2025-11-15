@@ -70,7 +70,12 @@ docs/_build/
 
 # Embeddings Cache
 .cache/
-models/
+# Downloaded model files only (not our code)
+*.bin
+*.safetensors
+*.onnx
+*.pt
+*.pth
 
 # Temporary files
 tmp/
